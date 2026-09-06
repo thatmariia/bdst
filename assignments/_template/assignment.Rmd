@@ -1,0 +1,47 @@
+---
+title: "{{TITLE}}"
+subtitle: "BDS Toolbox"
+author: "{{AUTHOR}}"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  html_document:
+    theme: cosmo
+    highlight: tango
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: false
+    df_print: paged
+    code_download: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,          # the hand-in has to show the code
+  message = FALSE,
+  warning = FALSE,
+  error = TRUE,
+  comment = "#>",
+  collapse = TRUE,
+  fig.show = "hold",
+  fig.align = "default",
+  fig.width = 4,
+  fig.height = 4,
+  dpi = 150
+)
+
+options(dplyr.summarise.inform = FALSE)
+set.seed(42)
+
+library(tidyverse)
+```
+
+## Exercise x.x.x
+
+*Question text goes here.*
+
+```{r ex-x-x-x}
+
+```
+
+Answer in prose here.
