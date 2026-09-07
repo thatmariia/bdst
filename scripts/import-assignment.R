@@ -288,6 +288,7 @@ for (s in seq_along(section_start)) {
   lettered <- grepl(":", head_txt)
 
   questions <- character()
+  n_given <- 0L
   for (b in body) {
     nm <- node_name(b)
 
@@ -302,8 +303,23 @@ for (s in seq_along(section_start)) {
     } else if (nm == "pre") {
       code <- trimws(xml2::xml_text(b), which = "right")
       if (nzchar(trimws(code))) {
-        n_chunks <- n_chunks + 1L
-        out <- c(out, sprintf("```{r ex-%s-given}", slug), code, "```", "")
+        code_lines <- strsplit(code, "\n", fixed = TRUE)[[1]]
+        printed <- all(grepl("^\\s*##", code_lines))
+
+        if (printed) {
+          # The book's own printed output, not something to re-run.
+          out <- c(out, "```", code, "```", "")
+        } else {
+          # Several code blocks in one exercise each need their own label.
+          n_given <- n_given + 1L
+          label <- if (n_given == 1L) {
+            sprintf("ex-%s-given", slug)
+          } else {
+            sprintf("ex-%s-given-%d", slug, n_given)
+          }
+          n_chunks <- n_chunks + 1L
+          out <- c(out, sprintf("```{r %s}", label), code, "```", "")
+        }
       }
     } else {
       txt <- as_markdown(b)
