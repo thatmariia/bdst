@@ -17,6 +17,7 @@ renv::restore()
 | id | Title | Source | Hand-in |
 |----|-------|--------|---------|
 | `01-explore` | Assignment 1: Explore | [Rmd](assignments/01-explore/01-explore.Rmd) | [HTML](output/01-explore.html) |
+| `02-wrangle` | Assignment 2: Wrangle | [Rmd](assignments/02-wrangle/02-wrangle.Rmd) | [HTML](output/02-wrangle/html) |
 
 ## Starting a new assignment
 
