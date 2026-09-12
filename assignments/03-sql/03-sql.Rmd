@@ -1,0 +1,228 @@
+---
+title: "SQL Assignment"
+subtitle: "BDS Toolbox"
+author: "Mariia Steeghs-Turchina"
+date: "2026-09-13"
+output:
+  html_document:
+    theme: cosmo
+    highlight: tango
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: false
+    df_print: paged
+    code_download: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,          # the hand-in has to show the code
+  message = FALSE,
+  warning = FALSE,
+  error = TRUE,
+  comment = "#>",
+  collapse = TRUE,
+  fig.show = "hold",
+  fig.align = "default",
+  fig.width = 4,
+  fig.height = 4,
+  dpi = 150
+)
+
+options(dplyr.summarise.inform = FALSE)
+set.seed(42)
+```
+
+> Source: Abe Hofman
+
+## Introduction
+
+This short SQL assignment allows you to practice your SQL skills. You will learn how to run SQL directly on the SQL server and by using R. SQL server:
+
+https://data-visualization.oefenweb.nl/adminer.php?server=127.0.2.1%3A3307 (queries can be executed via the `SQL command` page)
+
+Online Rstudio environment:
+
+https://data-visualization.oefenweb.nl/rstudio/ For both environments, login with your `username` and `password` (see comment in the canvas assignment).
+
+Submit your code in a plain .txt file, in a commented .R file or in RMarkdown (use SQL block for SQL code).
+
+We will post the correct answers after the deadline.
+
+## Q1
+
+**Write a SQL query that counts how many domains we have for all applications (see SQL Handout)**
+
+```{r query-1, include=FALSE}
+q1 <- trimws("
+SELECT applications.id, applications.name, COUNT(domains.id) AS n_domains
+FROM applications
+LEFT JOIN domains ON domains.application_id = applications.id
+GROUP BY applications.id, applications.name
+")
+```
+
+```{sql ex-q1, eval=FALSE, code=q1}
+```
+
+## Q2
+
+**To which domain does the item belong that is played most frequently? (Look in the `items` table, and you can also first inspect the SQL server environment)**
+
+```{r query-2, include=FALSE}
+q2 <- trimws("
+SELECT items.modified_count, domains.id, domains.name
+FROM items
+LEFT JOIN domains ON domains.id = items.domain_id
+ORDER BY items.modified_count DESC 
+LIMIT 1
+")
+```
+
+```{sql ex-q2, eval=FALSE, code=q2}
+```
+
+## Q3
+
+**I try to make the following table using a SQL statement.**
+
+```
+##    id             name      name
+## 1  41         getallen Rekentuin
+## 2  44        1-2-3'tje Rekentuin
+## 3  48        kangoeroe Rekentuin
+## 4  50    knowledgequiz Rekentuin
+## 5  59           tafels Rekentuin
+## 6  60      verhaaltjes Rekentuin
+## 7  61            meten Rekentuin
+## 8  64    vorm en kleur Rekentuin
+## 9  65 figuur en plaats Rekentuin
+## 10 67         splitsen Rekentuin
+```
+
+**Can you fix the three errors in my code:**
+
+```{sql ex-q3-given, eval=FALSE}
+SELECT domains.id, domains.name, applications.name
+FROM domains
+LIMIT 10
+LEFT JOIN applications ON applications.id = domains.application_id
+WHERE applications.name == 'rekentuin'
+AND id > 40
+ORDER BY id
+```
+
+Errors:
+
+1. double `==` in selecting application names
+2. ambiguous `id` in the last 2 lines
+3. limiting too early
+
+```{r query-3, include=FALSE}
+q3 <- trimws("
+SELECT domains.id, domains.name, applications.name
+FROM domains
+LEFT JOIN applications ON applications.id = domains.application_id
+WHERE applications.name = 'rekentuin'
+AND domains.id > 40
+ORDER BY domains.id
+LIMIT 10
+")
+```
+
+```{sql ex-q3, eval=FALSE, code=q3}
+```
+
+## Q4
+
+**Use the user_domain_ratings. Investigate how many items users made on average in domains 1, 2 and 3. Your outcome should be as follows:**
+
+```
+##   domain_id AVG(num_played)
+## 1         1        383.2100
+## 2         2        294.4264
+## 3         3        201.0501
+```
+
+```{r query-4, include=FALSE}
+q4 <- trimws("
+SELECT domain_id, AVG(num_played)
+FROM user_domain_ratings
+WHERE domain_id IN (1, 2, 3)
+GROUP BY domain_id
+ORDER BY domain_id
+")
+```
+
+```{sql ex-q4, eval=FALSE, code=q4}
+```
+
+## Q5
+
+**Now extend your result of Q4 (join the user_domain_ratings and users tables). What are these averages for both males and females?**
+
+```{r query-5, include=FALSE}
+q5 <- trimws("
+SELECT user_domain_ratings.domain_id, users.gender, AVG(user_domain_ratings.num_played)
+FROM users
+INNER JOIN user_domain_ratings ON user_domain_ratings.new_user_id = users.id
+WHERE user_domain_ratings.domain_id IN (1, 2, 3)
+AND users.gender IS NOT NULL
+GROUP BY user_domain_ratings.domain_id, users.gender
+ORDER BY user_domain_ratings.domain_id, users.gender
+")
+```
+
+```{sql ex-q5, eval=FALSE, code=q5}
+```
+
+## Q6
+
+```{r detect-env}
+on_server <- file.exists(path.expand("~/.my.cnf"))
+on_server
+```
+
+```{r ex-q6-given, eval = on_server}
+if (!requireNamespace("devtools", quietly = TRUE)) {
+  install.packages("devtools")
+}
+if (!requireNamespace("oefenwebDatabase", quietly = TRUE)) {
+  devtools::install_git("https://github.com/Oefenweb/r-database.git")
+}
+```
+
+```{r ex-q6-connect, eval = on_server}
+con <- oefenwebDatabase::connect()
+```
+
+It is also possible to run SQL queries using the Rstudio server.
+
+To do that, log in to the Online Rstudio environment and make connection with the server. Therefore you need to install devtools so that you can install the oefenwebDatabase package.
+
+Now we can make a connection:
+
+From this point on, you can use the database connection to retrieve data from the SQL server.
+
+**Reproduce your answer from Q4 an Q5 using R.**
+
+```{r ex-q6, eval = on_server, results = "asis"}
+queries <- list(
+  "Q1" = q1,
+  "Q2" = q2,
+  "Q3" = q3,
+  "Q4" = q4, 
+  "Q5" = q5
+)
+
+for (name in names(queries)) {
+  cat("**Running query", name, "**\n\n")
+  result <- DBI::dbGetQuery(con, queries[[name]])
+  print(knitr::kable(result))
+}
+```
+
+```{r ex-q6-disconnect, eval = on_server}
+oefenwebDatabase::close_connections()
+```
