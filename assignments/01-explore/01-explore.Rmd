@@ -2,7 +2,7 @@
 title: "R4DS Assignment 1: Explore"
 subtitle: "BDS Toolbox"
 author: "Mariia Steeghs-Turchina"
-date: "`r format(Sys.Date(), '%d %B %Y')`"
+date: "2026-09-06"
 output:
   html_document:
     theme: cosmo
