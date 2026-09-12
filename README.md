@@ -44,3 +44,14 @@ Rscript scripts/render.R  # renders all assignments
 ```
 
 The results are written in `output/`.
+
+An assignment whose YAML header says
+
+```yaml
+render_locally: false
+```
+
+is skipped - it is knitted elsewhere (like on a course server that
+can reach a database a local machine can't), and the committed HTML in
+`output/` is the real hand-in. Both `render.R` and the GitHub Actions
+workflow respect the flag.

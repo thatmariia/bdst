@@ -14,6 +14,15 @@ if (!dir.exists("assignments")) {
   stop("Run this from the repository root (no 'assignments/' directory here).", call. = FALSE)
 }
 
+# An assignment whose YAML says `render_locally: false` is knitted somewhere
+# else (e.g. a course server that can reach a database we cannot), and its
+# committed HTML is the real hand-in. Never overwrite it from here.
+renders_locally <- function(id) {
+  rmd <- file.path("assignments", id, paste0(id, ".Rmd"))
+  meta <- rmarkdown::yaml_front_matter(rmd)
+  !identical(meta$render_locally, FALSE)
+}
+
 ids <- commandArgs(trailingOnly = TRUE)
 
 if (length(ids) == 0L) {
@@ -23,6 +32,18 @@ if (length(ids) == 0L) {
 }
 if (length(ids) == 0L) {
   stop("No assignments found in 'assignments/'.", call. = FALSE)
+}
+
+skipped <- ids[!vapply(ids, renders_locally, logical(1))]
+ids <- setdiff(ids, skipped)
+
+for (id in skipped) {
+  message("Skipping ", id, " (render_locally: false -- knitted elsewhere, ",
+          "output/", id, ".html left untouched)")
+}
+if (length(ids) == 0L) {
+  message("\nNothing to render.")
+  quit(save = "no")
 }
 
 dir.create("output", showWarnings = FALSE)
