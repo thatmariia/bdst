@@ -16,23 +16,18 @@ if (!dir.exists("assignments")) {
   stop("Run this from the repository root (no 'assignments/' directory here).", call. = FALSE)
 }
 
+source("scripts/_template.R")
+
 id <- args[[1]]
 title <- if (length(args) > 1L) args[[2]] else id
-template <- file.path("assignments", "_template", "assignment.Rmd")
 target <- file.path("assignments", id, paste0(id, ".Rmd"))
 
-if (!file.exists(template)) {
-  stop("Template not found at '", template, "'.", call. = FALSE)
-}
 if (file.exists(target)) {
   stop("'", target, "' already exists -- delete it first if you really mean to start over.", call. = FALSE)
 }
 
 dir.create(file.path("assignments", id, "figures"), recursive = TRUE, showWarnings = FALSE)
 
-text <- readLines(template, warn = FALSE)
-text <- gsub("{{TITLE}}", title, text, fixed = TRUE)
-text <- gsub("{{AUTHOR}}", "Mariia Steeghs-Turchina", text, fixed = TRUE)
-writeLines(text, target)
+writeLines(render_template(title), target)
 
 message("Created ", target)
