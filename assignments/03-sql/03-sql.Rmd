@@ -2,6 +2,7 @@
 title: "SQL Assignment"
 subtitle: "BDS Toolbox"
 author: "Mariia Steeghs-Turchina"
+render_locally: false
 date: "2026-09-13"
 output:
   html_document:
