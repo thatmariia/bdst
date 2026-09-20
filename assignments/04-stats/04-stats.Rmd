@@ -3,7 +3,7 @@ title: "Stats Assignment"
 subtitle: "BDS Toolbox"
 author: "Mariia Steeghs-Turchina"
 render_locally: false
-date:"2026-09-20"
+date: "2026-09-20"
 output:
   html_document:
     theme: cosmo

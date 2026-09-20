@@ -1,4 +1,4 @@
-name: Render & publish
+name: Publish
 
 on:
   push:
@@ -29,9 +29,6 @@ jobs:
           r-version: release
 
       - uses: r-lib/actions/setup-renv@v2
-
-      - name: Render assignments
-        run: Rscript scripts/render.R
 
       - name: Build index
         run: Rscript scripts/build-index.R
