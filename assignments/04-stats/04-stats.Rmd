@@ -1,0 +1,482 @@
+---
+title: "Stats Assignment"
+subtitle: "BDS Toolbox"
+author: "Mariia Steeghs-Turchina"
+render_locally: false
+date:"2026-09-20"
+output:
+  html_document:
+    theme: cosmo
+    highlight: tango
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: false
+    df_print: paged
+    code_download: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,          # the hand-in has to show the code
+  message = FALSE,
+  warning = FALSE,
+  error = TRUE,
+  comment = "#>",
+  collapse = TRUE,
+  fig.show = "hold",
+  fig.align = "default",
+  fig.width = 6,
+  fig.height = 4,
+  dpi = 150
+)
+
+options(dplyr.summarise.inform = FALSE)
+set.seed(42)
+
+library(tidyverse)
+```
+
+> Source: Abe
+
+# 1: Bias-Variance Trade-off
+
+## Q1
+
+In your own words: what is irreducible error? In your own words: explain the bias-variance trade-off
+
+> Irreducible error is a part of the total error that cannot be eliminated by any model,
+> even models that capture true relationships perfectly. This erros is due to random variation,
+> measurement errors, unobserved factors, etc..
+
+> The bias-variance trade-off is the balance between a model being too simple and too flexible.
+> A simple model has high bias and can miss existing patterns (underfitting),
+> while an overly flexible model has high variance and can fit data too closely, including noise (overfitting).
+
+## Q2
+
+The following code makes a test and train variable in the df dataset, and fits a very complex and very basic model.
+
+```{r ex-q2-given}
+df <- data.frame(time = 1:10)
+df <- df %>% mutate(train_score = 5 + 3 * scale(time) + rnorm(length(time)), 
+                    test_score = 5 + 3 * scale(time) + rnorm(length(time)))
+
+mod_basic <- lm(train_score ~ 1, data = df)
+mod_complex <- lm(train_score ~ 1 + poly(time, 9), data = df)
+```
+
+Use your R skills to make the plots on slide 14, 15 and 21 from the lecture slides.
+
+```{r ex-q2-1, out.width="70%"}
+df_long <- df %>%
+  select(time, train_score, test_score) %>%
+  pivot_longer(
+    cols = c(train_score, test_score),
+    names_to = "set",
+    values_to = "score"
+  )
+
+# Plot similar to slide 15
+ggplot(df_long, aes(x = time, y = score, colour = set)) +
+  geom_point() +
+  theme_bw()
+```
+
+```{r ex-q2-2, out.width="50%"}
+# Predictions of the basic model
+df$pred_basic <- predict(mod_basic)
+
+# Plot of the basic model on the test observations
+ggplot(df, aes(x = time, y = test_score)) +
+  geom_point(color = "red") +
+  geom_line(aes(y = pred_basic)) +
+  labs(title = "Basic model") +
+  theme_bw()
+
+# Predictions of the complex model
+df$pred_complex <- predict(mod_complex)
+
+# Plot similar to slide 21
+ggplot(df, aes(x = time, y = test_score)) +
+  geom_point(color = "red") +
+  geom_line(aes(y = pred_complex)) +
+  labs(title = "Complex model") +
+  theme_bw()
+
+mse_basic <- mean((df$test_score - df$pred_basic)^2)
+mse_complex <- mean((df$test_score - df$pred_complex)^2)
+
+data.frame(
+  model = c("Basic", "Complex"),
+  test_MSE = c(mse_basic, mse_complex)
+)
+```
+
+# 2: Linear Model
+
+```{r ex-s2-given-1}
+# oefenwebDatabase::close_connections()
+con <- oefenwebDatabase::connect()
+```
+
+get data:
+
+```{r ex-s2-given-2}
+user_domain_ratings <- DBI::dbGetQuery(con, "SELECT * FROM user_domain_ratings")
+```
+
+make test and train data:
+
+```{r ex-s2-given-3}
+n <- nrow(user_domain_ratings)
+test_ids <- sample(1:n, round(n/5))
+prop.table(table((1:n) %in% test_ids))
+```
+
+```{r ex-s2-given-4}
+test_data <- user_domain_ratings[test_ids, ]
+dim(user_domain_ratings)
+```
+
+```{r ex-s2-given-5}
+user_domain_ratings <- user_domain_ratings[!(1:n) %in% test_ids, ]
+dim(user_domain_ratings)
+```
+
+do a simple linear regression
+
+```{r ex-s2-given-6}
+mod <- lm(rating ~ num_played, data = user_domain_ratings)
+```
+
+```{r ex-s2-given-7}
+summary(mod)
+```
+
+## Q3
+
+Significant, yes. But how would you interpret this result? Is this a good model?
+
+```{r ex-q3, out.width="70%"}
+user_domain_ratings$y_pred <- predict(mod)
+
+user_domain_ratings %>% 
+  slice_sample(prop = .2) %>% 
+  ggplot(aes(x = 100 * round(num_played / 100), y = round(rating))) + 
+  geom_count(alpha = .2, colour = "blue") +
+  geom_line(aes(y = y_pred)) + 
+  xlab("Number of items made") + 
+  ylab("Player rating") +
+  theme_bw()
+```
+
+> It seems the relationship is not described by a straight line very well.
+> So the this linear model is probably too simple for this data.
+
+## Q4
+
+By just using the num_played variable can you make a better model?
+Make sure to evaluate on the test data and make sure that you don’t overfit.
+[See 3.6.5 Non-linear Transformations of the Predictors]
+
+```{r ex-q4-1, out.width="50%"}
+# Keep observations where log(num_played) is defined
+user_domain_ratings_log <- user_domain_ratings %>%
+  filter(num_played > 0) %>%
+  mutate(num_played_log = log(num_played))
+
+# Fit improved model
+mod_log <- lm(rating ~ num_played_log,
+              data = user_domain_ratings_log)
+
+summary(mod_log)
+
+# Add predictions and residuals
+user_domain_ratings_log$y_pred <- predict(mod_log)
+user_domain_ratings_log$resid <- residuals(mod_log)
+
+# Plot model
+user_domain_ratings_log %>%
+  slice_sample(prop = .2) %>%
+  ggplot(aes(x = num_played_log, y = rating)) +
+  geom_count(alpha = .2, colour = "blue") +
+  geom_line(aes(y = y_pred)) +
+  xlab("Log number of items made") +
+  ylab("Player rating") +
+  theme_bw()
+
+# Plot residuals
+user_domain_ratings_log %>%
+  slice_sample(prop = .2) %>%
+  ggplot(aes(x = y_pred, y = resid)) +
+  geom_point(alpha = .2, colour = "blue") +
+  geom_hline(yintercept = 0, lty = 2) +
+  xlab("Fitted Values") +
+  ylab("Residuals") +
+  theme_bw()
+```
+
+```{r ex-q4-2}
+# Test data
+test_data_log <- test_data %>%
+  filter(num_played > 0) %>%
+  mutate(num_played_log = log(num_played))
+
+# Original model on the same test observations
+pred_original <- predict(mod, newdata = test_data_log)
+
+# Log model
+pred_log <- predict(mod_log, newdata = test_data_log)
+
+# Compare test MSE
+mse_original <- mean((test_data_log$rating - pred_original)^2, na.rm = TRUE)
+
+mse_log <- mean((test_data_log$rating - pred_log)^2, na.rm = TRUE)
+
+data.frame(
+  model = c("Original", "Log"),
+  test_MSE = c(mse_original, mse_log)
+)
+```
+
+We improved the model by taking log.
+We fitted the linear model and inspected the residuals.
+
+# 3. Multiple Linear Regression
+
+Get more data:
+
+```{r ex-s3-given}
+users <- DBI::dbGetQuery(con, "SELECT id AS new_user_id, gender, grade, date_of_birth FROM users")
+user_domain_ratings <- left_join(user_domain_ratings, users)
+```
+
+```
+## Joining with `by = join_by(new_user_id)`
+```
+
+And extend the model:
+
+```{r ex-s3-given-2}
+mod <- lm(rating ~ num_played + 
+            as.factor(domain_id) + 
+            gender + 
+            grade,
+          data = user_domain_ratings)
+summary(mod)
+```
+
+## Q5
+
+Based on the time differene between last_played and the date_of_birth calculate the age of each player.
+Now improve the model by using multiple variables.
+What is the best model that you can build.
+This is how do you get the higher explained variance?
+Again, make sure to evaluate on the test data and make sure that you don’t overfit.
+
+```{r ex-q5}
+# Get age
+user_domain_ratings <- user_domain_ratings %>%
+  mutate(
+    age = as.numeric(
+      difftime(as.Date(last_played),
+               as.Date(date_of_birth),
+               units = "days")
+    ) / 365.25
+  )
+
+# Log nr played
+user_domain_ratings <- user_domain_ratings %>%
+  filter(num_played > 0) %>%
+  mutate(num_played_log = log(num_played))
+
+# Fit MR
+mod_multiple <- lm(
+  rating ~ num_played_log +
+    as.factor(domain_id) +
+    gender +
+    grade +
+    age,
+  data = user_domain_ratings
+)
+
+summary(mod_multiple)
+
+# Fit interaction between num_played_log and domain_id
+mod_interaction <- lm(
+  rating ~ num_played_log * as.factor(domain_id) +
+    gender +
+    grade +
+    age,
+  data = user_domain_ratings
+)
+
+summary(mod_interaction)
+
+# Test data
+test_data <- left_join(test_data, users)
+
+test_data <- test_data %>%
+  mutate(
+    age = as.numeric(
+      difftime(as.Date(last_played),
+               as.Date(date_of_birth),
+               units = "days")
+    ) / 365.25
+  ) %>%
+  filter(num_played > 0) %>%
+  mutate(num_played_log = log(num_played))
+
+# Predictions
+pred_multiple <- predict(mod_multiple, newdata = test_data)
+pred_interaction <- predict(mod_interaction, newdata = test_data)
+
+mse_multiple <- mean(
+  (test_data$rating - pred_multiple)^2,
+  na.rm = TRUE
+)
+
+mse_interaction <- mean(
+  (test_data$rating - pred_interaction)^2,
+  na.rm = TRUE
+)
+
+data.frame(
+  model = c("Multiple", "Interaction"),
+  test_MSE = c(mse_multiple, mse_interaction)
+)
+```
+
+> Adding multiple predictors considerably improved the model. It explained about 75.9% of the rating variance.
+> We then also added an interaction term, whcih performed better on the test data. 
+> Its test MSE was 26.03, compared with 27.79 for the model without the interaction, so it seems to be the better model.
+> Since the improvement is present on the test data, there is no indication of overfitting.
+
+## Q6
+
+What happened with the effect of grade after including the effect of gender?
+[Tip; check page 101]
+
+```{r ex-q6}
+# Without gender
+mod_grade <- lm(
+  rating ~ num_played_log +
+    as.factor(domain_id) +
+    grade,
+  data = user_domain_ratings
+)
+
+summary(mod_grade)
+
+# With gender
+mod_grade_gender <- lm(
+  rating ~ num_played_log +
+    as.factor(domain_id) +
+    gender +
+    grade,
+  data = user_domain_ratings
+)
+
+summary(mod_grade_gender)
+
+data.frame(
+  model = c("Without gender", "With gender"),
+  grade_coefficient = c(
+    coef(mod_grade)["grade"],
+    coef(mod_grade_gender)["grade"]
+  )
+)
+```
+
+After adding gender to the model, the effect of grade becomes smaller because some of the effect of grades is now accounted for by gender, but the change is quite small.
+
+## Q7
+
+Now who would you explain this model to a collegue without a data science background?
+Would you want to change the model to more simplified model?
+
+> I would explain that the model predicts player rating using practice, domain, gender, grade and age. 
+> The effect of practice can also differ between domains. 
+> I would keep the more complex model for prediction because it performs better on the test data, 
+> but use the simpler model if interpretability is more important.
+
+# 4. Generalized LM
+
+Bonus: Run the following code, inspect the models, see if you can understand / improve / visualise some results.
+You can hand in your code, but this is not required.
+
+GLM is more of the same, but you need different tools!
+Lets see if can we predict the use of the question-mark button. Get some data
+
+```{r ex-s4-given}
+logs <- DBI::dbGetQuery(con, "SELECT * FROM log_records_1")
+```
+
+```{r ex-s4-given-2}
+logs <- logs %>% mutate(
+  q = 1 * (answer == "¿")
+)
+```
+
+```{r ex-s4-given-3}
+mod_basic <- glm(q ~ show_coins, data = logs, family = binomial())
+```
+
+```{r ex-s4-given-4}
+summary(mod_basic)
+```
+
+```{r ex-s4-given-5}
+mod0 <- glm(q ~ 1, data = logs, family = binomial())
+table(predict(mod0, type = "response"))
+```
+
+```{r ex-s4-given-6}
+anova(mod_basic, mod0, test="Chisq")
+```
+
+```
+## Analysis of Deviance Table
+## 
+## Model 1: q ~ show_coins
+## Model 2: q ~ 1
+##   Resid. Df Resid. Dev Df Deviance  Pr(>Chi)    
+## 1   1910169     560612                          
+## 2   1910170     560696 -1  -83.751 < 2.2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
+
+```{r ex-s4-given-7}
+logs$thbe <- logs$new_user_domain_rating - logs$item_rating
+mod_improved <- glm(q ~ show_coins + thbe + as.factor(difficulty), data = logs, family = binomial())
+summary(mod_improved)
+```
+
+```{r ex-s4-1, out.width="70%"}
+data.frame(
+  model = c("Basic", "Improved"),
+  AIC = c(AIC(mod_basic), AIC(mod_improved))
+)
+
+logs$pred <- predict(mod_improved, type = "response")
+
+logs %>%
+  group_by(difficulty) %>%
+  summarise(
+    predicted_probability = mean(pred, na.rm = TRUE)
+  ) %>%
+  ggplot(aes(
+    x = as.factor(difficulty),
+    y = predicted_probability
+  )) +
+  geom_col() +
+  xlab("Difficulty") +
+  ylab("Predicted probability of question-mark use") +
+  theme_bw()
+```
+
+```{r ex-s4-given-8}
+oefenwebDatabase::close_connections()
+```
